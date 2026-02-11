@@ -211,6 +211,42 @@ func TestFeatureGates(t *testing.T) {
 				return ""
 			}(),
 		},
+		{
+			name: "Control Plane CAPI machine management is allowed with DevPreviewNoUpgrade Feature Set",
+			installConfig: func() *types.InstallConfig {
+				c := validInstallConfig()
+				c.FeatureSet = v1.DevPreviewNoUpgrade
+				c.ControlPlane.Management = types.ClusterAPI
+				return c
+			}(),
+		},
+		{
+			name: "Compute CAPI machine management is allowed with DevPreviewNoUpgrade Feature Set",
+			installConfig: func() *types.InstallConfig {
+				c := validInstallConfig()
+				c.FeatureSet = v1.DevPreviewNoUpgrade
+				c.Compute[0].Management = types.ClusterAPI
+				return c
+			}(),
+		},
+		{
+			name: "Control Plane CAPI machine management is not allowed with Default Feature Set",
+			installConfig: func() *types.InstallConfig {
+				c := validInstallConfig()
+				c.ControlPlane.Management = types.ClusterAPI
+				return c
+			}(),
+			expected: `^controlPlane.management: Forbidden: this field is protected by the ClusterAPIControlPlaneInstall feature gate which must be enabled through either the TechPreviewNoUpgrade or CustomNoUpgrade feature set$`,
+		},
+		{
+			name: "Compute CAPI machine management is not allowed with the Default Feature Set",
+			installConfig: func() *types.InstallConfig {
+				c := validInstallConfig()
+				c.Compute[0].Management = types.ClusterAPI
+				return c
+			}(),
+			expected: `^compute.management: Forbidden: this field is protected by the ClusterAPIComputeInstall feature gate which must be enabled through either the TechPreviewNoUpgrade or CustomNoUpgrade feature set$`,
+		},
 	}
 
 	for _, tc := range cases {

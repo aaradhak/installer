@@ -8,9 +8,9 @@ import (
 	"github.com/openshift/installer/pkg/types/featuregates"
 )
 
-// GatedFeatures determines all of the install config fields that should
+// validateMachinePoolFeatureGates determines all of the install config fields that should
 // be validated to ensure that the proper featuregate is enabled when the field is used.
-func GatedFeatures(c *types.InstallConfig) []featuregates.GatedInstallConfigFeature {
+func validateMachinePoolFeatureGates(c *types.InstallConfig) []featuregates.GatedInstallConfigFeature {
 	return []featuregates.GatedInstallConfigFeature{
 		{
 			FeatureGateName: features.FeatureGateDualReplica,
@@ -39,6 +39,16 @@ func GatedFeatures(c *types.InstallConfig) []featuregates.GatedInstallConfigFeat
 			FeatureGateName: features.FeatureGateOSStreams,
 			Condition:       len(c.OSImageStream) != 0,
 			Field:           field.NewPath("osImageStream"),
+		},
+		{
+			FeatureGateName: features.FeatureGateClusterAPIControlPlaneInstall,
+			Condition:       c.ControlPlane != nil && c.ControlPlane.Management == types.ClusterAPI,
+			Field:           field.NewPath("controlPlane", "management"),
+		},
+		{
+			FeatureGateName: features.FeatureGateClusterAPIComputeInstall,
+			Condition:       len(c.Compute) > 0 && c.Compute[0].Management == types.ClusterAPI,
+			Field:           field.NewPath("compute", "management"),
 		},
 	}
 }

@@ -34,7 +34,6 @@ import (
 	"github.com/openshift/installer/pkg/types/baremetal"
 	baremetalvalidation "github.com/openshift/installer/pkg/types/baremetal/validation"
 	"github.com/openshift/installer/pkg/types/common"
-	defaultsvalidation "github.com/openshift/installer/pkg/types/defaults/validation"
 	"github.com/openshift/installer/pkg/types/external"
 	"github.com/openshift/installer/pkg/types/featuregates"
 	"github.com/openshift/installer/pkg/types/gcp"
@@ -1652,9 +1651,7 @@ func validateGatedFeatures(c *types.InstallConfig) field.ErrorList {
 		gatedFeatures = append(gatedFeatures, openstackvalidation.GatedFeatures(c)...)
 	}
 
-	if c.ControlPlane != nil {
-		gatedFeatures = append(gatedFeatures, defaultsvalidation.GatedFeatures(c)...)
-	}
+	gatedFeatures = append(gatedFeatures, validateMachinePoolFeatureGates(c)...)
 
 	fg := c.EnabledFeatureGates()
 	errMsgTemplate := "this field is protected by the %s feature gate which must be enabled through either the TechPreviewNoUpgrade or CustomNoUpgrade feature set"
