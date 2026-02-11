@@ -88,6 +88,7 @@ const (
 	AwsUsGovPartitionID = "aws-us-gov" // AWS GovCloud (US) partition.
 	AwsIsoPartitionID   = "aws-iso"    // AWS ISO (US) partition.
 	AwsIsoBPartitionID  = "aws-iso-b"  // AWS ISOB (US) partition.
+	AwsEuscPartitionID  = "aws-eusc"   // AWS Europe Sovereign Cloud.
 )
 
 // AWS Standard partition's regions.
