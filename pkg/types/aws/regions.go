@@ -151,3 +151,8 @@ const (
 const (
 	UsIsoBEast1RegionID = "us-isob-east-1" // AWS ISOB (US) East.
 )
+
+// AWS European Sovereign Cloud partition's regions.
+const (
+	EuscDeEast1RegionID = "eusc-de-east-1" // AWS European Sovereign Cloud (Germany).
+)
