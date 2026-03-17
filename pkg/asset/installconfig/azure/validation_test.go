@@ -262,18 +262,32 @@ var (
 	diskEncryptionSetID          = "test-encryption-set-id"
 	diskEncryptionSetName        = "test-encryption-set-name"
 	diskEncryptionSetType        = "test-encryption-set-type"
-	diskEncryptionSetLocation    = "disk-encryption-set-location"
+	diskEncryptionSetLocation    = validRegion
+	wrongDiskEncryptionSetRegion = "westus"
 	validDiskEncryptionSetResult = &azenc.DiskEncryptionSet{
 		ID:       to.StringPtr(diskEncryptionSetID),
 		Name:     to.StringPtr(diskEncryptionSetName),
 		Type:     to.StringPtr(diskEncryptionSetType),
 		Location: to.StringPtr(diskEncryptionSetLocation),
 	}
+	wrongRegionDiskEncryptionSetResult = &azenc.DiskEncryptionSet{
+		ID:       to.StringPtr(diskEncryptionSetID),
+		Name:     to.StringPtr(diskEncryptionSetName),
+		Type:     to.StringPtr(diskEncryptionSetType),
+		Location: to.StringPtr(wrongDiskEncryptionSetRegion),
+	}
 	validConfidentialVMDiskEncryptionSetResult = &azenc.DiskEncryptionSet{
 		ID:                      to.StringPtr(diskEncryptionSetID),
 		Name:                    to.StringPtr(diskEncryptionSetName),
 		Type:                    to.StringPtr(diskEncryptionSetType),
 		Location:                to.StringPtr(diskEncryptionSetLocation),
+		EncryptionSetProperties: &azenc.EncryptionSetProperties{EncryptionType: azenc.ConfidentialVMEncryptedWithCustomerKey},
+	}
+	wrongRegionConfidentialVMDiskEncryptionSetResult = &azenc.DiskEncryptionSet{
+		ID:                      to.StringPtr(diskEncryptionSetID),
+		Name:                    to.StringPtr(diskEncryptionSetName),
+		Type:                    to.StringPtr(diskEncryptionSetType),
+		Location:                to.StringPtr(wrongDiskEncryptionSetRegion),
 		EncryptionSetProperties: &azenc.EncryptionSetProperties{EncryptionType: azenc.ConfidentialVMEncryptedWithCustomerKey},
 	}
 
@@ -301,6 +315,22 @@ var (
 			SubscriptionID: validDiskEncryptionSetSubscriptionID,
 			ResourceGroup:  validDiskEncryptionSetResourceGroup,
 			Name:           invalidDiskEncryptionSetName,
+		}
+	}
+	wrongRegionDiskEncryptionSetName   = "test-encryption-set-wrong-region"
+	wrongRegionDiskEncryptionSetConfig = func() *azure.DiskEncryptionSet {
+		return &azure.DiskEncryptionSet{
+			SubscriptionID: validDiskEncryptionSetSubscriptionID,
+			ResourceGroup:  validDiskEncryptionSetResourceGroup,
+			Name:           wrongRegionDiskEncryptionSetName,
+		}
+	}
+	wrongRegionConfidentialVMDiskEncryptionSetName   = "test-confidential-vm-encryption-set-wrong-region"
+	wrongRegionConfidentialVMDiskEncryptionSetConfig = func() *azure.DiskEncryptionSet {
+		return &azure.DiskEncryptionSet{
+			SubscriptionID: validDiskEncryptionSetSubscriptionID,
+			ResourceGroup:  validDiskEncryptionSetResourceGroup,
+			Name:           wrongRegionConfidentialVMDiskEncryptionSetName,
 		}
 	}
 
@@ -338,6 +368,15 @@ var (
 	invalidDiskEncryptionSetCompute = func(ic *types.InstallConfig) {
 		ic.Compute[0].Platform.Azure.OSDisk.DiskEncryptionSet = invalidDiskEncryptionSetConfig()
 	}
+	wrongRegionDiskEncryptionSetDefaultMachinePlatform = func(ic *types.InstallConfig) {
+		ic.Azure.DefaultMachinePlatform.OSDisk.DiskEncryptionSet = wrongRegionDiskEncryptionSetConfig()
+	}
+	wrongRegionDiskEncryptionSetControlPlane = func(ic *types.InstallConfig) {
+		ic.ControlPlane.Platform.Azure.OSDisk.DiskEncryptionSet = wrongRegionDiskEncryptionSetConfig()
+	}
+	wrongRegionDiskEncryptionSetCompute = func(ic *types.InstallConfig) {
+		ic.Compute[0].Platform.Azure.OSDisk.DiskEncryptionSet = wrongRegionDiskEncryptionSetConfig()
+	}
 
 	validConfidentialVMDiskEncryptionSetDefaultMachinePlatform = func(ic *types.InstallConfig) {
 		ic.Azure.DefaultMachinePlatform.OSDisk.SecurityProfile = &azure.VMDiskSecurityProfile{DiskEncryptionSet: validConfidentialVMDiskEncryptionSetConfig()}
@@ -365,6 +404,15 @@ var (
 	}
 	invalidTypeConfidentialVMDiskEncryptionSetCompute = func(ic *types.InstallConfig) {
 		ic.Compute[0].Platform.Azure.OSDisk.SecurityProfile = &azure.VMDiskSecurityProfile{DiskEncryptionSet: validDiskEncryptionSetConfig()}
+	}
+	wrongRegionConfidentialVMDiskEncryptionSetDefaultMachinePlatform = func(ic *types.InstallConfig) {
+		ic.Azure.DefaultMachinePlatform.OSDisk.SecurityProfile = &azure.VMDiskSecurityProfile{DiskEncryptionSet: wrongRegionConfidentialVMDiskEncryptionSetConfig()}
+	}
+	wrongRegionConfidentialVMDiskEncryptionSetControlPlane = func(ic *types.InstallConfig) {
+		ic.ControlPlane.Platform.Azure.OSDisk.SecurityProfile = &azure.VMDiskSecurityProfile{DiskEncryptionSet: wrongRegionConfidentialVMDiskEncryptionSetConfig()}
+	}
+	wrongRegionConfidentialVMDiskEncryptionSetCompute = func(ic *types.InstallConfig) {
+		ic.Compute[0].Platform.Azure.OSDisk.SecurityProfile = &azure.VMDiskSecurityProfile{DiskEncryptionSet: wrongRegionConfidentialVMDiskEncryptionSetConfig()}
 	}
 
 	validUserAssignedIdentityName          = "valid-identity"
@@ -909,6 +957,21 @@ func TestAzureDiskEncryptionSet(t *testing.T) {
 			edits:    editFunctions{invalidDiskEncryptionSetCompute},
 			errorMsg: fmt.Sprintf(`^compute\[0\].platform.azure.osDisk.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: failed to get disk encryption set$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, invalidDiskEncryptionSetName),
 		},
+		{
+			name:     "Wrong region disk encryption set for default pool",
+			edits:    editFunctions{wrongRegionDiskEncryptionSetDefaultMachinePlatform},
+			errorMsg: fmt.Sprintf(`^platform.azure.defaultMachinePlatform.osDisk.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
+		{
+			name:     "Wrong region disk encryption set for control-plane",
+			edits:    editFunctions{wrongRegionDiskEncryptionSetControlPlane},
+			errorMsg: fmt.Sprintf(`^platform.azure.osDisk.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
+		{
+			name:     "Wrong region disk encryption set for compute",
+			edits:    editFunctions{wrongRegionDiskEncryptionSetCompute},
+			errorMsg: fmt.Sprintf(`^compute\[0\].platform.azure.osDisk.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
 	}
 
 	mockCtrl := gomock.NewController(t)
@@ -919,6 +982,7 @@ func TestAzureDiskEncryptionSet(t *testing.T) {
 	// DiskEncryptionSet
 	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, validDiskEncryptionSetName).Return(validDiskEncryptionSetResult, nil).AnyTimes()
 	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, invalidDiskEncryptionSetName).Return(nil, fmt.Errorf("failed to get disk encryption set")).AnyTimes()
+	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionDiskEncryptionSetName).Return(wrongRegionDiskEncryptionSetResult, nil).AnyTimes()
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -989,6 +1053,21 @@ func TestAzureSecurityProfileDiskEncryptionSet(t *testing.T) {
 			edits:    editFunctions{invalidTypeConfidentialVMDiskEncryptionSetCompute},
 			errorMsg: fmt.Sprintf(`^compute\[0\].platform.azure.osDisk.securityProfile.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: the disk encryption set should be created with type %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, validDiskEncryptionSetName, azenc.ConfidentialVMEncryptedWithCustomerKey),
 		},
+		{
+			name:     "Wrong region security profile disk encryption set for default pool",
+			edits:    editFunctions{wrongRegionConfidentialVMDiskEncryptionSetDefaultMachinePlatform},
+			errorMsg: fmt.Sprintf(`^platform.azure.defaultMachinePlatform.osDisk.securityProfile.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionConfidentialVMDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
+		{
+			name:     "Wrong region security profile disk encryption set for control-plane",
+			edits:    editFunctions{wrongRegionConfidentialVMDiskEncryptionSetControlPlane},
+			errorMsg: fmt.Sprintf(`^platform.azure.osDisk.securityProfile.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionConfidentialVMDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
+		{
+			name:     "Wrong region security profile disk encryption set for compute",
+			edits:    editFunctions{wrongRegionConfidentialVMDiskEncryptionSetCompute},
+			errorMsg: fmt.Sprintf(`^compute\[0\].platform.azure.osDisk.securityProfile.diskEncryptionSet: Invalid value: {"subscriptionId":"%s","resourceGroup":"%s","name":"%s"}: disk encryption set is in %s, but the cluster region is %s$`, validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionConfidentialVMDiskEncryptionSetName, wrongDiskEncryptionSetRegion, validRegion),
+		},
 	}
 
 	mockCtrl := gomock.NewController(t)
@@ -999,6 +1078,7 @@ func TestAzureSecurityProfileDiskEncryptionSet(t *testing.T) {
 	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, validConfidentialVMDiskEncryptionSetName).Return(validConfidentialVMDiskEncryptionSetResult, nil).AnyTimes()
 	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, validDiskEncryptionSetName).Return(validDiskEncryptionSetResult, nil).AnyTimes()
 	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, invalidDiskEncryptionSetName).Return(nil, fmt.Errorf("failed to get disk encryption set")).AnyTimes()
+	azureClient.EXPECT().GetDiskEncryptionSet(gomock.Any(), validDiskEncryptionSetSubscriptionID, validDiskEncryptionSetResourceGroup, wrongRegionConfidentialVMDiskEncryptionSetName).Return(wrongRegionConfidentialVMDiskEncryptionSetResult, nil).AnyTimes()
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

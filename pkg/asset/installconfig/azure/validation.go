@@ -79,19 +79,27 @@ func Validate(client API, meta *Metadata, ic *types.InstallConfig) error {
 func ValidateDiskEncryptionSet(client API, ic *types.InstallConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	clusterRegion := ic.Platform.Azure.Region
+
 	if ic.Platform.Azure.DefaultMachinePlatform != nil && ic.Platform.Azure.DefaultMachinePlatform.OSDisk.DiskEncryptionSet != nil {
 		diskEncryptionSet := ic.Platform.Azure.DefaultMachinePlatform.OSDisk.DiskEncryptionSet
-		_, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
+		desFieldPath := field.NewPath("platform").Child("azure", "defaultMachinePlatform", "osDisk", "diskEncryptionSet")
+		des, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("platform").Child("azure", "defaultMachinePlatform", "osDisk", "diskEncryptionSet"), diskEncryptionSet, err.Error()))
+			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
+		} else if des != nil && des.Location != nil && !strings.EqualFold(*des.Location, clusterRegion) {
+			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, fmt.Sprintf("disk encryption set is in %s, but the cluster region is %s", *des.Location, clusterRegion)))
 		}
 	}
 
 	if ic.ControlPlane != nil && ic.ControlPlane.Platform.Azure != nil && ic.ControlPlane.Platform.Azure.OSDisk.DiskEncryptionSet != nil {
 		diskEncryptionSet := ic.ControlPlane.Platform.Azure.OSDisk.DiskEncryptionSet
-		_, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
+		desFieldPath := field.NewPath("platform").Child("azure", "osDisk", "diskEncryptionSet")
+		des, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("platform").Child("azure", "osDisk", "diskEncryptionSet"), diskEncryptionSet, err.Error()))
+			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
+		} else if des != nil && des.Location != nil && !strings.EqualFold(*des.Location, clusterRegion) {
+			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, fmt.Sprintf("disk encryption set is in %s, but the cluster region is %s", *des.Location, clusterRegion)))
 		}
 	}
 
@@ -99,9 +107,12 @@ func ValidateDiskEncryptionSet(client API, ic *types.InstallConfig) field.ErrorL
 		fieldPath := field.NewPath("compute").Index(idx)
 		if compute.Platform.Azure != nil && compute.Platform.Azure.OSDisk.DiskEncryptionSet != nil {
 			diskEncryptionSet := compute.Platform.Azure.OSDisk.DiskEncryptionSet
-			_, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
+			desFieldPath := fieldPath.Child("platform", "azure", "osDisk", "diskEncryptionSet")
+			des, err := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
 			if err != nil {
-				allErrs = append(allErrs, field.Invalid(fieldPath.Child("platform", "azure", "osDisk", "diskEncryptionSet"), diskEncryptionSet, err.Error()))
+				allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
+			} else if des != nil && des.Location != nil && !strings.EqualFold(*des.Location, clusterRegion) {
+				allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, fmt.Sprintf("disk encryption set is in %s, but the cluster region is %s", *des.Location, clusterRegion)))
 			}
 		}
 	}
@@ -109,12 +120,15 @@ func ValidateDiskEncryptionSet(client API, ic *types.InstallConfig) field.ErrorL
 	return allErrs
 }
 
-func validateConfidentialDiskEncryptionSet(client API, diskEncryptionSet *aztypes.DiskEncryptionSet, desFieldPath *field.Path) error {
+func validateConfidentialDiskEncryptionSet(client API, diskEncryptionSet *aztypes.DiskEncryptionSet, desFieldPath *field.Path, clusterRegion string) error {
 	resp, requestErr := client.GetDiskEncryptionSet(context.TODO(), diskEncryptionSet.SubscriptionID, diskEncryptionSet.ResourceGroup, diskEncryptionSet.Name)
 	if requestErr != nil {
 		return requestErr
 	} else if resp == nil || resp.EncryptionSetProperties == nil || resp.EncryptionSetProperties.EncryptionType != azenc.ConfidentialVMEncryptedWithCustomerKey {
 		return fmt.Errorf("the disk encryption set should be created with type %s", azenc.ConfidentialVMEncryptedWithCustomerKey)
+	}
+	if resp.Location != nil && !strings.EqualFold(*resp.Location, clusterRegion) {
+		return fmt.Errorf("disk encryption set is in %s, but the cluster region is %s", *resp.Location, clusterRegion)
 	}
 	return nil
 }
@@ -122,13 +136,14 @@ func validateConfidentialDiskEncryptionSet(client API, diskEncryptionSet *aztype
 // ValidateSecurityProfileDiskEncryptionSet ensures the security profile disk encryption set exists and is valid.
 func ValidateSecurityProfileDiskEncryptionSet(client API, ic *types.InstallConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
+	clusterRegion := ic.Platform.Azure.Region
 
 	if ic.Platform.Azure.DefaultMachinePlatform != nil &&
 		ic.Platform.Azure.DefaultMachinePlatform.OSDisk.SecurityProfile != nil &&
 		ic.Platform.Azure.DefaultMachinePlatform.OSDisk.SecurityProfile.DiskEncryptionSet != nil {
 		desFieldPath := field.NewPath("platform").Child("azure", "defaultMachinePlatform", "osDisk", "securityProfile", "diskEncryptionSet")
 		diskEncryptionSet := ic.Platform.Azure.DefaultMachinePlatform.OSDisk.SecurityProfile.DiskEncryptionSet
-		err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath)
+		err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath, clusterRegion)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
 		}
@@ -140,7 +155,7 @@ func ValidateSecurityProfileDiskEncryptionSet(client API, ic *types.InstallConfi
 		ic.ControlPlane.Platform.Azure.OSDisk.SecurityProfile.DiskEncryptionSet != nil {
 		desFieldPath := field.NewPath("platform").Child("azure", "osDisk", "securityProfile", "diskEncryptionSet")
 		diskEncryptionSet := ic.ControlPlane.Platform.Azure.OSDisk.SecurityProfile.DiskEncryptionSet
-		err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath)
+		err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath, clusterRegion)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
 		}
@@ -153,7 +168,7 @@ func ValidateSecurityProfileDiskEncryptionSet(client API, ic *types.InstallConfi
 			compute.Platform.Azure.OSDisk.SecurityProfile.DiskEncryptionSet != nil {
 			desFieldPath := fieldPath.Child("platform", "azure", "osDisk", "securityProfile", "diskEncryptionSet")
 			diskEncryptionSet := compute.Platform.Azure.OSDisk.SecurityProfile.DiskEncryptionSet
-			err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath)
+			err := validateConfidentialDiskEncryptionSet(client, diskEncryptionSet, desFieldPath, clusterRegion)
 			if err != nil {
 				allErrs = append(allErrs, field.Invalid(desFieldPath, diskEncryptionSet, err.Error()))
 			}
