@@ -17,3 +17,9 @@ func getMarketplaceStreamFileName(_ types.OSImageStream) string {
 	// functions will gracefully handle the missing file.
 	return "coreos/marketplace/marketplace-scos.json"
 }
+
+// GetPayloadImageStreamTag returns the payload image stream tag corresponding
+// to the given OS image stream. For SCOS, this always returns "stream-coreos".
+func GetPayloadImageStreamTag(_ types.OSImageStream) string {
+	return "stream-coreos"
+}
