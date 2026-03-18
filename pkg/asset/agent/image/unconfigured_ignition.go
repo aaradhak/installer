@@ -170,7 +170,7 @@ func (a *UnconfiguredIgnition) Generate(ctx context.Context, dependencies asset.
 	rendezvousHostTemplateFile := ignition.FileFromString(fmt.Sprintf("%s.template", rendezvousHostEnvPath), "root", 0644, rendezvousHostTemplateData)
 	config.Storage.Files = append(config.Storage.Files, rendezvousHostTemplateFile)
 
-	rendezvousIP, err := RetrieveRendezvousIP(agentConfig.Config, nil, nmStateConfigs.Config)
+	rendezvousIP, err := RetrieveRendezvousIP(agentConfig.Config, nil, nil)
 	if err == nil {
 		rendezvousHostData, err := getRendezvousHostEnvFromTemplate(rendezvousHostTemplateData, rendezvousIP)
 		if err != nil {
