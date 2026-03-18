@@ -143,6 +143,18 @@ spec:
                 - Enabled
                 - Disabled
                 type: string
+              management:
+                default: ClusterAPI
+                description: |-
+                  Management is the API that will be used for machine management in the cluster.
+                  Using this field for control plane machines requires the ClusterAPIControlPlaneInstall feature gate.
+                  Using this field for compute machines requires the ClusterAPIComputeInstall feature gate.
+                  Supported platforms: aws
+                  Default is ClusterAPI.
+                enum:
+                - ClusterAPI
+                - MachineAPI
+                type: string
               name:
                 description: |-
                   Name is the name of the machine pool.
@@ -1703,6 +1715,18 @@ spec:
                   - Enabled
                   - Disabled
                   type: string
+                management:
+                  default: ClusterAPI
+                  description: |-
+                    Management is the API that will be used for machine management in the cluster.
+                    Using this field for control plane machines requires the ClusterAPIControlPlaneInstall feature gate.
+                    Using this field for compute machines requires the ClusterAPIComputeInstall feature gate.
+                    Supported platforms: aws
+                    Default is ClusterAPI.
+                  enum:
+                  - ClusterAPI
+                  - MachineAPI
+                  type: string
                 name:
                   description: |-
                     Name is the name of the machine pool.
@@ -3202,6 +3226,18 @@ spec:
                 - ""
                 - Enabled
                 - Disabled
+                type: string
+              management:
+                default: ClusterAPI
+                description: |-
+                  Management is the API that will be used for machine management in the cluster.
+                  Using this field for control plane machines requires the ClusterAPIControlPlaneInstall feature gate.
+                  Using this field for compute machines requires the ClusterAPIComputeInstall feature gate.
+                  Supported platforms: aws
+                  Default is ClusterAPI.
+                enum:
+                - ClusterAPI
+                - MachineAPI
                 type: string
               name:
                 description: |-
