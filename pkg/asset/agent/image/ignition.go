@@ -303,7 +303,7 @@ func (a *Ignition) Generate(ctx context.Context, dependencies asset.Parents) err
 	}
 
 	rendezvousHostFile := ignition.FileFromString(rendezvousHostEnvPath,
-		"root", 0644,
+		"root", 0600,
 		getRendezvousHostEnv(agentTemplateData, a.RendezvousIP, agentWorkflow.Workflow))
 	config.Storage.Files = append(config.Storage.Files, rendezvousHostFile)
 

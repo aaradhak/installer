@@ -167,7 +167,7 @@ func (a *UnconfiguredIgnition) Generate(ctx context.Context, dependencies asset.
 	enabledServices := getDefaultEnabledServices()
 
 	rendezvousHostTemplateData := getRendezvousHostEnvTemplate(agentTemplateData, agentWorkflow.Workflow)
-	rendezvousHostTemplateFile := ignition.FileFromString(fmt.Sprintf("%s.template", rendezvousHostEnvPath), "root", 0644, rendezvousHostTemplateData)
+	rendezvousHostTemplateFile := ignition.FileFromString(fmt.Sprintf("%s.template", rendezvousHostEnvPath), "root", 0600, rendezvousHostTemplateData)
 	config.Storage.Files = append(config.Storage.Files, rendezvousHostTemplateFile)
 
 	rendezvousIP, err := RetrieveRendezvousIP(agentConfig.Config, nil, nmStateConfigs.Config)
@@ -176,7 +176,7 @@ func (a *UnconfiguredIgnition) Generate(ctx context.Context, dependencies asset.
 		if err != nil {
 			return err
 		}
-		rendezvousHostFile := ignition.FileFromString(rendezvousHostEnvPath, "root", 0644, rendezvousHostData)
+		rendezvousHostFile := ignition.FileFromString(rendezvousHostEnvPath, "root", 0600, rendezvousHostData)
 		config.Storage.Files = append(config.Storage.Files, rendezvousHostFile)
 	}
 
