@@ -41,6 +41,7 @@ import (
 	"github.com/openshift/installer/pkg/asset/releaseimage"
 	"github.com/openshift/installer/pkg/asset/rhcos"
 	"github.com/openshift/installer/pkg/asset/tls"
+	rhcosutils "github.com/openshift/installer/pkg/rhcos"
 	"github.com/openshift/installer/pkg/types"
 	awstypes "github.com/openshift/installer/pkg/types/aws"
 	aztypes "github.com/openshift/installer/pkg/types/azure"
@@ -98,6 +99,7 @@ type bootstrapTemplateData struct {
 	FeatureSet            configv1.FeatureSet
 	Invoker               string
 	ClusterDomain         string
+	StreamTag             string
 }
 
 // platformTemplateData is the data to use to replace values in bootstrap
@@ -401,6 +403,7 @@ func (a *Common) getTemplateData(dependencies asset.Parents, bootstrapInPlace bo
 		FeatureSet:            installConfig.Config.FeatureSet,
 		Invoker:               openshiftInstallInvoker,
 		ClusterDomain:         installConfig.Config.ClusterDomain(),
+		StreamTag:             rhcosutils.GetPayloadImageStreamTag(installConfig.Config.OSImageStream),
 	}
 }
 
