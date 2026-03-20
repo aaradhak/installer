@@ -535,6 +535,14 @@ func (w *Worker) Generate(ctx context.Context, dependencies asset.Parents) error
 				}
 			}
 
+			dHosts := map[string]icaws.Host{}
+			if mpool.HostPlacement != nil && mpool.HostPlacement.Affinity != nil && *mpool.HostPlacement.Affinity == awstypes.HostAffinityDedicatedHost {
+				dHosts, err = installConfig.AWS.DedicatedHosts(ctx, mpool.HostPlacement.DedicatedHost)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve dedicated hosts for compute pool: %w", err)
+				}
+			}
+
 			pool.Platform.AWS = &mpool
 			sets, err := aws.MachineSets(&aws.MachineSetInput{
 				ClusterID:                clusterID.InfraID,
@@ -545,6 +553,7 @@ func (w *Worker) Generate(ctx context.Context, dependencies asset.Parents) error
 				Pool:                     &pool,
 				Role:                     pool.Name,
 				UserDataSecret:           workerUserDataSecretName,
+				Hosts:                    dHosts,
 			})
 			if err != nil {
 				return errors.Wrap(err, "failed to create worker machine objects")
